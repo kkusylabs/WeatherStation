@@ -1,98 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Backyard Weather Station</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
   <main class="dashboard">
     <header class="header">
       <h1>Backyard Weather Station</h1>
-      <p>Last updated: <span id="lastUpdated">2:05 PM</span></p>
+      <p>Last updated: <span id="lastUpdated">--</span></p>
     </header>
 
     <section class="current-conditions">
       <div class="card">
-        <div class="value">91.4°F</div>
-        <div class="label" id="currentTemp">Temp</div>
+        <div class="value" id="temperatureValue">--°F</div>
+        <div class="label">Temp</div>
       </div>
 
       <div class="card">
-        <div class="value">68%</div>
-        <div class="label" id="currentHumidity">Humidity</div>
+        <div class="value" id="humidityValue">--%</div>
+        <div class="label">Humidity</div>
       </div>
 
       <div class="card">
-        <div class="value">1012.8 hPa</div>
-        <div class="label" id="currentPressure">Pressure</div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Temperature</h2>
-
-        <div class="range-buttons">
-          <button class="active">24h</button>
-          <button>7d</button>
-        </div>
-      </div>
-
-      <div class="graph-placeholder">
-        Temperature line graph
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Humidity</h2>
-
-        <div class="range-buttons">
-          <button class="active">24h</button>
-          <button>7d</button>
-        </div>
-      </div>
-
-      <div class="graph-placeholder">
-        Humidity line graph
+        <div class="value" id="pressureValue">-- hPa</div>
+        <div class="label">Pressure</div>
       </div>
     </section>
 
     <section class="stats">
-      <h2>Today’s stats</h2>
+      <h2>Today’s Stats</h2>
 
       <div class="stats-grid">
-        <div>
-          <span class="stat-label">Low Temp</span>
-          <span class="stat-value" id="dailyLow">76.8°F</span>
-        </div>
+        <div><span class="stat-label">High Temp</span><span class="stat-value" id="highTemp">--°F</span></div>
+        <div><span class="stat-label">Low Temp</span><span class="stat-value" id="lowTemp">--°F</span></div>
+        <div><span class="stat-label">High Humidity</span><span class="stat-value" id="highHumidity">--%</span></div>
+        <div><span class="stat-label">Low Humidity</span><span class="stat-value" id="lowHumidity">--%</span></div>
+        <div><span class="stat-label">Pressure Trend</span><span class="stat-value" id="pressureTrend">--</span></div>
+      </div>
+    </section>
 
-        <div>
-          <span class="stat-label">High Temp</span>
-          <span class="stat-value" id="dailyHigh">94.2°F</span>
-        </div>
+    <section class="history">
+      <div class="panel-header">
+        <h2>History</h2>
 
-        <div>
-          <span class="stat-label">Pressure Trend</span>
-          <span class="stat-value" id="pressureTrend">Falling</span>
+        <div class="range-buttons">
+          <button id="range24h" class="active">24h</button>
+          <button id="range7d">7d</button>
         </div>
+      </div>
 
-        <div>
-          <span class="stat-label">Low Humidity</span>
-          <span class="stat-value" id="dailyHumidityLow">54%</span>
+      <div class="graph-card">
+        <h3>Temperature</h3>
+        <div class="graph-container">
+          <canvas id="temperatureChart"></canvas>
         </div>
+      </div>
 
-        <div>
-          <span class="stat-label">High Humidity</span>
-          <span class="stat-value" id="dailyHumidityHigh">82%</span>
+      <div class="graph-card">
+        <h3>Humidity</h3>
+        <div class="graph-container">
+          <canvas id="humidityChart"></canvas>
+        </div>
+      </div>
+
+      <div class="graph-card">
+        <h3>Pressure</h3>
+        <div class="graph-container">
+          <canvas id="pressureChart"></canvas>
         </div>
       </div>
     </section>
   </main>
-</body>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>

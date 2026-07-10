@@ -5,6 +5,8 @@ from database import get_connection, init_database
 
 app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
 
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
+
 @app.get("/")
 def index():
     return app.send_static_file("index.html")
