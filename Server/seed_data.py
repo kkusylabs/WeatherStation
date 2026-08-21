@@ -1,11 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import math
 import random
-
 import database
+
+LOCAL_TZ = ZoneInfo("America/Chicago")
 
 
 def generate_temperature(timestamp):
+    """Generate a simulated temperature for the given local time."""
+
     hour = timestamp.hour + timestamp.minute / 60
 
     daily_cycle = math.sin((hour - 6) * math.pi / 12)
@@ -18,6 +22,8 @@ def generate_temperature(timestamp):
 
 
 def generate_humidity(temperature_f):
+    """Generate simulated humidity based on temperature."""
+
     base_humidity = 55
 
     temp_effect = (72 - temperature_f) * 0.8
@@ -31,51 +37,57 @@ def generate_humidity(temperature_f):
 
 
 def generate_pressure(timestamp):
+    """Generate simulated atmospheric pressure for the given local time."""
+
     day_number = timestamp.timetuple().tm_yday
 
     weather_pattern = math.sin(day_number * math.pi / 5)
 
     base_pressure = 1013
-    swing = 0.18
-    noise = random.uniform(-0.03, 0.03)
+    swing = 6
+    noise = random.uniform(-0.3, 0.3)
 
     return round(base_pressure + swing * weather_pattern + noise, 2)
 
 
 def seed_database(days=30, interval_minutes=5):
+    """Generate and store simulated weather readings for testing."""
+
     database.init_database()
 
-    start_time = datetime.now() - timedelta(days=days)
+    # Generate timestamps in UTC
+    start_time = datetime.now(timezone.utc) - timedelta(days=days)
 
-    total_readings = int(
-        (days * 24 * 60) / interval_minutes
-    )
+    total_readings = int((days * 24 * 60) / interval_minutes)
 
     for i in range(total_readings):
+        # This timestamp remains UTC
+        timestamp = start_time + timedelta(minutes=i * interval_minutes)
 
-        timestamp = start_time + timedelta(
-            minutes=i * interval_minutes
-        )
+        # Convert to local time for weather calculations
+        local_timestamp = timestamp.astimezone(LOCAL_TZ)
 
-        temperature_f = generate_temperature(timestamp)
+        temperature_f = generate_temperature(local_timestamp)
 
-        humidity = generate_humidity(
-            temperature_f
-        )
+        humidity = generate_humidity(temperature_f)
 
-        pressure_inhg = generate_pressure(
-            timestamp
-        )
+        pressure_hpa = generate_pressure(local_timestamp)
 
-        database.insert_reading(
-            timestamp.isoformat(),
-            temperature_f,
-            humidity,
-            pressure_inhg
-        )
+        # Store timestamp as ISO 8601 UTC with Z
+        timestamp_utc = format_utc_timestamp(timestamp)
 
-    print(
-        f"Inserted {total_readings} fake readings."
+        database.save_reading(timestamp_utc, temperature_f, humidity, pressure_hpa)
+
+    print(f"Inserted {total_readings} fake readings.")
+
+
+def format_utc_timestamp(value):
+    """Format a datetime as an ISO 8601 UTC timestamp ending in Z."""
+
+    return (
+        value.astimezone(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
     )
 
 
