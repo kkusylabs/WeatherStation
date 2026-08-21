@@ -3,12 +3,18 @@ from pathlib import Path
 
 DB_PATH = Path("weather.db")
 
+
 def get_connection():
+    """Return a connection to the weather database."""
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_database():
+    """Create the readings table and timestamp index if they do not exist."""
+
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS readings (
@@ -20,9 +26,19 @@ def init_database():
             )
         """)
 
-def insert_reading(timestamp, temperature_f, humidity, pressure_hpa):
-    with get_connection() as conn:
         conn.execute("""
+            CREATE INDEX IF NOT EXISTS
+                idx_readings_timestamp
+            ON readings(timestamp)
+        """)
+
+
+def save_reading(timestamp, temperature_f, humidity, pressure_hpa):
+    """Save a weather reading to the database."""
+
+    with get_connection() as conn:
+        conn.execute(
+            """
             INSERT INTO readings (
                 timestamp,
                 temperature_f,
@@ -30,15 +46,14 @@ def insert_reading(timestamp, temperature_f, humidity, pressure_hpa):
                 pressure_hpa
             )
             VALUES (?, ?, ?, ?)
-        """, (
-            timestamp,
-            temperature_f,
-            humidity,
-            pressure_hpa
-        ))
+        """,
+            (timestamp, temperature_f, humidity, pressure_hpa),
+        )
 
 
-def get_current_reading():
+def get_latest_reading():
+    """Return the most recent reading, or None if no readings exist."""
+
     with get_connection() as conn:
         row = conn.execute("""
             SELECT *
@@ -49,38 +64,78 @@ def get_current_reading():
 
     return dict(row) if row else None
 
-def get_today_stats(today):
-    with get_connection() as conn:
-        row = conn.execute("""
+
+def get_stats_between(start_time, end_time):
+    """
+    Return weather statistics for a half-open UTC time interval.
+
+    The interval includes start_time and excludes end_time.
+    """
+
+    with get_connection() as connection:
+        row = connection.execute(
+            """
             SELECT
-                MAX(temperature_f) AS high_temperature_f,
-                MIN(temperature_f) AS low_temperature_f,
-                MAX(humidity) AS high_humidity,
-                MIN(humidity) AS low_humidity
+                MAX(temperature_f)
+                    AS high_temperature_f,
+                MIN(temperature_f)
+                    AS low_temperature_f,
+                MAX(humidity)
+                    AS high_humidity,
+                MIN(humidity)
+                    AS low_humidity
             FROM readings
-            WHERE date(timestamp) = ?
-        """, (today,)).fetchone()
+            WHERE timestamp >= ?
+              AND timestamp < ?
+        """,
+            (start_time, end_time),
+        ).fetchone()
 
-    return dict(row) if row else None
+    return dict(row)
 
-def get_recent_pressures(limit=2):
-    with get_connection() as conn:
-        rows = conn.execute("""
-            SELECT pressure_hpa
-            FROM readings
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """, (limit,)).fetchall()
 
-    return [dict(row) for row in rows]
+def get_history_between(start_time, end_time):
+    """
+    Return readings in this inclusive UTC interval:
 
-def get_history_since(start_time):
-    with get_connection() as conn:
-        rows = conn.execute("""
+        start_time <= timestamp <= end_time
+    """
+
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
             SELECT *
             FROM readings
             WHERE timestamp >= ?
+              AND timestamp <= ?
             ORDER BY timestamp ASC
-        """, (start_time,)).fetchall()
+            """,
+            (start_time, end_time),
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def get_pressure_history_between(start_time, end_time):
+    """
+    Return pressure readings for the specified UTC time interval.
+
+    The interval includes both start_time and end_time, and results
+    are returned in chronological order.
+    """
+
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                timestamp,
+                pressure_hpa
+            FROM readings
+            WHERE timestamp >= ?
+              AND timestamp <= ?
+            ORDER BY timestamp ASC
+            """,
+            (start_time, end_time),
+        ).fetchall()
 
     return [dict(row) for row in rows]

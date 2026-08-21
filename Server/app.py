@@ -1,18 +1,29 @@
-from datetime import datetime, timedelta 
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
 from flask import Flask, jsonify, request
+
+STATION_TIMEZONE = ZoneInfo("America/Chicago")
+
+PRESSURE_TREND_WINDOW_HOURS = 3
+PRESSURE_TREND_MINIMUM_SPAN_HOURS = 2
+PRESSURE_TREND_THRESHOLD_HPA = 0.5
+
 import database
-from database import get_connection, init_database
 
 app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
-
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
+
 
 @app.get("/")
 def index():
     return app.send_static_file("index.html")
 
+
 @app.post("/api/readings")
 def add_reading():
+    """Validate and store a weather station reading."""
+
     data = request.get_json()
 
     if data is None:
@@ -24,91 +35,185 @@ def add_reading():
         pressure_hpa = float(data["pressureHpa"])
     except KeyError as e:
         return jsonify({"error": f"Missing field: {e.args[0]}"}), 400
-    except ValueError:
-        return jsonify({"error": "Temperature, humidity, and pressure must be numbers"}), 400
+    except (TypeError, ValueError):
+        return (
+            jsonify({"error": "Temperature, humidity, and pressure must be numbers"}),
+            400,
+        )
 
-    timestamp = datetime.now().isoformat(timespec="seconds")
+    timestamp = format_utc_timestamp(datetime.now(timezone.utc))
 
-    print(f"Received reading: {timestamp} - Temp: {temperature_f} F, Humidity: {humidity} %, Pressure: {pressure_hpa} hPa")
+    print(
+        f"Received reading: {timestamp} - Temp: {temperature_f} F, Humidity: {humidity} %, Pressure: {pressure_hpa} hPa"
+    )
 
-    database.insert_reading(timestamp, temperature_f, humidity, pressure_hpa)
+    database.save_reading(timestamp, temperature_f, humidity, pressure_hpa)
 
     return jsonify({"status": "ok"}), 201
 
 
 @app.get("/api/weather/dashboard")
 def get_dashboard():
-    current = database.get_current_reading()
+    """
+    Return the latest reading and statistics associated with its local day.
+
+    Statistics are based on the date of the latest reading rather than the
+    current time so historical data remains available when the station is offline.
+    """
+
+    current = database.get_latest_reading()
 
     if current is None:
-        return jsonify({
-            "current": None,
-            "stats": None
-        })
+        return jsonify({"current": None, "stats": None})
 
-    today = datetime.now().date().isoformat()
-    stats = database.get_today_stats(today)
+    current_utc = datetime.fromisoformat(current["timestamp"])
 
-    pressure_rows = database.get_recent_pressures()
+    local_date, day_start_utc, day_end_utc = get_local_day_utc_range(current_utc)
 
-    pressure_trend = "steady"
+    stats = database.get_stats_between(
+        format_utc_timestamp(day_start_utc), format_utc_timestamp(day_end_utc)
+    )
 
-    if len(pressure_rows) == 2:
-        latest = pressure_rows[0]["pressure_hpa"]
-        previous = pressure_rows[1]["pressure_hpa"]
+    pressure_start_utc = current_utc - timedelta(hours=PRESSURE_TREND_WINDOW_HOURS)
 
-        if latest > previous:
-            pressure_trend = "rising"
-        elif latest < previous:
-            pressure_trend = "falling"
+    pressure_rows = database.get_pressure_history_between(
+        format_utc_timestamp(pressure_start_utc), format_utc_timestamp(current_utc)
+    )
 
-    return jsonify({
-        "current": {
-            "temperatureF": current["temperature_f"],
-            "humidity": current["humidity"],
-            "pressureHpa": current["pressure_hpa"],
-            "timestamp": current["timestamp"]
-        },
-        "stats": {
-            "highTemperatureF": stats["high_temperature_f"],
-            "lowTemperatureF": stats["low_temperature_f"],
-            "highHumidity": stats["high_humidity"],
-            "lowHumidity": stats["low_humidity"],
-            "pressureTrend": pressure_trend
+    pressure_trend = calculate_pressure_trend(pressure_rows)
+
+    return jsonify(
+        {
+            "current": reading_to_json(current),
+            "stats": {
+                "date": local_date.isoformat(),
+                "highTemperatureF": stats["high_temperature_f"],
+                "lowTemperatureF": stats["low_temperature_f"],
+                "highHumidity": stats["high_humidity"],
+                "lowHumidity": stats["low_humidity"],
+                "pressureTrend": pressure_trend,
+            },
         }
-    })
+    )
+
 
 @app.get("/api/weather/history")
 def get_history():
+    """
+    Return weather history ending at the latest available reading.
+
+    The range may be 24 hours or 7 days.
+    """
+
     range_value = request.args.get("range", "24h")
 
     if range_value == "24h":
-        start_time = datetime.now() - timedelta(hours=24)
+        range_length = timedelta(hours=24)
     elif range_value == "7d":
-        start_time = datetime.now() - timedelta(days=7)
+        range_length = timedelta(days=7)
     else:
         return jsonify({"error": "range must be 24h or 7d"}), 400
 
-    rows = database.get_history_since(
-        start_time.isoformat(timespec="seconds")
+    latest = database.get_latest_reading()
+
+    if latest is None:
+        return jsonify({"range": range_value, "readings": []})
+
+    end_utc = datetime.fromisoformat(latest["timestamp"])
+
+    start_utc = end_utc - range_length
+
+    rows = database.get_history_between(
+        format_utc_timestamp(start_utc), format_utc_timestamp(end_utc)
     )
 
-    readings = []
+    readings = [reading_to_json(row) for row in rows]
 
-    for row in rows:
-        readings.append({
-            "timestamp": row["timestamp"],
-            "temperatureF": row["temperature_f"],
-            "humidity": row["humidity"],
-            "pressureHpa": row["pressure_hpa"]
-        })
+    return jsonify({"range": range_value, "readings": readings})
 
-    return jsonify({
-        "range": range_value,
-        "readings": readings
-    })
+
+def format_utc_timestamp(value):
+    """Format a datetime as an ISO 8601 UTC timestamp ending in Z."""
+
+    return (
+        value.astimezone(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
+
+
+def get_local_day_utc_range(utc_datetime):
+    """
+    Return the local date and UTC boundaries for the station's local day.
+
+    The UTC interval includes the start of the local day and excludes
+    the start of the next local day.
+    """
+
+    local_datetime = utc_datetime.astimezone(STATION_TIMEZONE)
+    local_date = local_datetime.date()
+
+    local_start = datetime(
+        local_date.year, local_date.month, local_date.day, tzinfo=STATION_TIMEZONE
+    )
+
+    next_local_date = local_date + timedelta(days=1)
+
+    local_end = datetime(
+        next_local_date.year,
+        next_local_date.month,
+        next_local_date.day,
+        tzinfo=STATION_TIMEZONE,
+    )
+
+    utc_start = local_start.astimezone(timezone.utc)
+    utc_end = local_end.astimezone(timezone.utc)
+
+    return local_date, utc_start, utc_end
+
+
+def calculate_pressure_trend(pressure_rows):
+    """
+    Calculate the pressure trend from a sequence of pressure readings.
+
+    Return rising, falling, or steady when the readings span the minimum
+    required time. Return None when there is insufficient data.
+    """
+
+    if len(pressure_rows) < 2:
+        return None
+
+    first_row = pressure_rows[0]
+    last_row = pressure_rows[-1]
+
+    first_time = datetime.fromisoformat(first_row["timestamp"])
+    last_time = datetime.fromisoformat(last_row["timestamp"])
+
+    if last_time - first_time < timedelta(hours=PRESSURE_TREND_MINIMUM_SPAN_HOURS):
+        return None
+
+    pressure_change = last_row["pressure_hpa"] - first_row["pressure_hpa"]
+
+    if pressure_change > PRESSURE_TREND_THRESHOLD_HPA:
+        return "rising"
+
+    if pressure_change < -PRESSURE_TREND_THRESHOLD_HPA:
+        return "falling"
+
+    return "steady"
+
+
+def reading_to_json(row):
+    """Convert a database reading to the API response format."""
+
+    return {
+        "timestamp": row["timestamp"],
+        "temperatureF": row["temperature_f"],
+        "humidity": row["humidity"],
+        "pressureHpa": row["pressure_hpa"],
+    }
 
 
 if __name__ == "__main__":
-    init_database()
+    database.init_database()
     app.run(host="0.0.0.0", port=5000, debug=True)
