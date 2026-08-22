@@ -1,15 +1,19 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-
 from flask import Flask, jsonify, request
 
-STATION_TIMEZONE = ZoneInfo("America/Chicago")
+import os
+import database
 
 PRESSURE_TREND_WINDOW_HOURS = 3
 PRESSURE_TREND_MINIMUM_SPAN_HOURS = 2
 PRESSURE_TREND_THRESHOLD_HPA = 0.5
 
-import database
+STATION_NAME = os.getenv("STATION_NAME", "Backyard Weather Station")
+
+STATION_TIMEZONE = os.getenv("STATION_TIMEZONE", "America/Chicago")
+
+station_tz = ZoneInfo(STATION_TIMEZONE)
 
 app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
@@ -18,6 +22,11 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
 @app.get("/")
 def index():
     return app.send_static_file("index.html")
+
+
+@app.get("/api/station")
+def get_station():
+    return jsonify({"name": STATION_NAME, "timeZone": STATION_TIMEZONE})
 
 
 @app.post("/api/readings")
@@ -150,11 +159,11 @@ def get_local_day_utc_range(utc_datetime):
     the start of the next local day.
     """
 
-    local_datetime = utc_datetime.astimezone(STATION_TIMEZONE)
+    local_datetime = utc_datetime.astimezone(station_tz)
     local_date = local_datetime.date()
 
     local_start = datetime(
-        local_date.year, local_date.month, local_date.day, tzinfo=STATION_TIMEZONE
+        local_date.year, local_date.month, local_date.day, tzinfo=station_tz
     )
 
     next_local_date = local_date + timedelta(days=1)
@@ -163,7 +172,7 @@ def get_local_day_utc_range(utc_datetime):
         next_local_date.year,
         next_local_date.month,
         next_local_date.day,
-        tzinfo=STATION_TIMEZONE,
+        tzinfo=station_tz,
     )
 
     utc_start = local_start.astimezone(timezone.utc)
