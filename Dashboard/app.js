@@ -4,27 +4,32 @@ let temperatureChart;
 let humidityChart;
 let pressureChart;
 
+let stationTimeZone;
 
-window.addEventListener('load', () => {
+window.addEventListener("load", async () => {
+  try {
     createCharts();
 
-    loadDashboard();
-    loadHistory(currentRange);
+    await loadStation();
+    await loadDashboard();
+    await loadHistory(currentRange);
 
     document.getElementById("range24h").addEventListener("click", () => {
-        changeRange("24h");
+      changeRange("24h");
     });
 
     document.getElementById("range7d").addEventListener("click", () => {
-        changeRange("7d");
+      changeRange("7d");
     });
 
     setInterval(loadDashboard, 60000);
 
     setInterval(() => {
-        loadHistory(currentRange);
+      loadHistory(currentRange);
     }, 300000);
-
+  } catch (error) {
+    console.error("Failed to initialize dashboard:", error);
+  }
 });
 
 function createCharts() {
@@ -45,9 +50,9 @@ function createLineChart(canvasId, label) {
           label: label,
           data: [],
           tension: 0.25,
-          pointRadius: 2
-        }
-      ]
+          pointRadius: 2,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -56,17 +61,33 @@ function createLineChart(canvasId, label) {
       scales: {
         x: {
           ticks: {
-            maxTicksLimit: 8
-          }
+            maxTicksLimit: 8,
+          },
         },
         y: {
-          beginAtZero: false
-        }
-      }
-    }
+          beginAtZero: false,
+        },
+      },
+    },
   });
 }
 
+async function loadStation() {
+  const response = await fetch("/api/station");
+
+  if (!response.ok) {
+    throw new Error("Failed to load station");
+  }
+
+  const station = await response.json();
+
+  if (!station.name || !station.timeZone) {
+    throw new Error("Invalid station configuration");
+  }
+
+  document.getElementById("stationName").textContent = station.name;
+  stationTimeZone = station.timeZone;
+}
 
 async function loadDashboard() {
   try {
@@ -90,7 +111,6 @@ async function loadDashboard() {
   }
 }
 
-
 async function loadHistory(range) {
   try {
     const response = await fetch(`/api/weather/history?range=${range}`);
@@ -107,7 +127,6 @@ async function loadHistory(range) {
   }
 }
 
-
 function updateCurrentConditions(current) {
   document.getElementById("temperatureValue").textContent =
     `${current.temperatureF.toFixed(1)}°F`;
@@ -118,8 +137,9 @@ function updateCurrentConditions(current) {
   document.getElementById("pressureValue").textContent =
     `${current.pressureHpa.toFixed(1)} hPa`;
 
-  document.getElementById("lastUpdated").textContent =
-    formatLastUpdated(current.timestamp);
+  document.getElementById("lastUpdated").textContent = formatLastUpdated(
+    current.timestamp,
+  );
 }
 
 function updateDailyStats(stats) {
@@ -135,30 +155,30 @@ function updateDailyStats(stats) {
   document.getElementById("lowHumidity").textContent =
     `${stats.lowHumidity.toFixed(0)}%`;
 
-  document.getElementById("pressureTrend").textContent =
-    capitalize(stats.pressureTrend);
+  document.getElementById("pressureTrend").textContent = capitalize(
+    stats.pressureTrend,
+  );
 }
 
-
 function updateGraphs(readings) {
-  const labels = readings.map(reading => formatTimestamp(reading.timestamp));
+  const labels = readings.map((reading) => formatTimestamp(reading.timestamp));
 
   updateChart(
     temperatureChart,
     labels,
-    readings.map(reading => reading.temperatureF)
+    readings.map((reading) => reading.temperatureF),
   );
 
   updateChart(
     humidityChart,
     labels,
-    readings.map(reading => reading.humidity)
+    readings.map((reading) => reading.humidity),
   );
 
   updateChart(
     pressureChart,
     labels,
-    readings.map(reading => reading.pressureHpa)
+    readings.map((reading) => reading.pressureHpa),
   );
 }
 
@@ -175,39 +195,43 @@ function changeRange(range) {
 }
 
 function setActiveRangeButton() {
-  document.getElementById("range24h").classList.toggle(
-    "active",
-    currentRange === "24h"
-  );
+  document
+    .getElementById("range24h")
+    .classList.toggle("active", currentRange === "24h");
 
-  document.getElementById("range7d").classList.toggle(
-    "active",
-    currentRange === "7d"
-  );
+  document
+    .getElementById("range7d")
+    .classList.toggle("active", currentRange === "7d");
 }
-
 
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
 
   if (currentRange === "7d") {
-    return date.toLocaleDateString([], {
+    return date.toLocaleString([], {
+      timeZone: stationTimeZone,
       month: "short",
-      day: "numeric"
+      day: "numeric",
+      hour: "numeric",
     });
   }
 
   return date.toLocaleTimeString([], {
+    timeZone: stationTimeZone,
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
   });
 }
 
 function formatLastUpdated(timestamp) {
-    return new Date(timestamp).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit"
-    });
+  return new Date(timestamp).toLocaleString([], {
+    timeZone: stationTimeZone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function capitalize(value) {

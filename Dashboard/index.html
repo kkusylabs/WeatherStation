@@ -1,81 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Backyard Weather Station</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <main class="dashboard">
-    <header class="header">
-      <h1>Backyard Weather Station</h1>
-      <p>Last updated: <span id="lastUpdated">--</span></p>
-    </header>
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Backyard Weather Station</title>
+      <link rel="stylesheet" href="styles.css" />
+   </head>
+   <body>
+      <main class="dashboard">
+         <header class="header">
+            <h1 id="stationName">Weather Station</h1>
+            <p>Last updated: <span id="lastUpdated">--</span></p>
+         </header>
 
-    <section class="current-conditions">
-      <div class="card">
-        <div class="value" id="temperatureValue">--°F</div>
-        <div class="label">Temp</div>
-      </div>
+         <section class="current-conditions">
+            <div class="card">
+               <div class="value" id="temperatureValue">--°F</div>
+               <div class="label">Temp</div>
+            </div>
 
-      <div class="card">
-        <div class="value" id="humidityValue">--%</div>
-        <div class="label">Humidity</div>
-      </div>
+            <div class="card">
+               <div class="value" id="humidityValue">--%</div>
+               <div class="label">Humidity</div>
+            </div>
 
-      <div class="card">
-        <div class="value" id="pressureValue">-- hPa</div>
-        <div class="label">Pressure</div>
-      </div>
-    </section>
+            <div class="card">
+               <div class="value" id="pressureValue">-- hPa</div>
+               <div class="label">Pressure</div>
+            </div>
+         </section>
 
-    <section class="stats">
-      <h2>Today’s Stats</h2>
+         <section class="stats">
+            <h2>Today’s Stats</h2>
 
-      <div class="stats-grid">
-        <div><span class="stat-label">High Temp</span><span class="stat-value" id="highTemp">--°F</span></div>
-        <div><span class="stat-label">Low Temp</span><span class="stat-value" id="lowTemp">--°F</span></div>
-        <div><span class="stat-label">High Humidity</span><span class="stat-value" id="highHumidity">--%</span></div>
-        <div><span class="stat-label">Low Humidity</span><span class="stat-value" id="lowHumidity">--%</span></div>
-        <div><span class="stat-label">Pressure Trend</span><span class="stat-value" id="pressureTrend">--</span></div>
-      </div>
-    </section>
+            <div class="stats-grid">
+               <div>
+                  <span class="stat-label">High Temp</span
+                  ><span class="stat-value" id="highTemp">--°F</span>
+               </div>
+               <div>
+                  <span class="stat-label">Low Temp</span
+                  ><span class="stat-value" id="lowTemp">--°F</span>
+               </div>
+               <div>
+                  <span class="stat-label">High Humidity</span
+                  ><span class="stat-value" id="highHumidity">--%</span>
+               </div>
+               <div>
+                  <span class="stat-label">Low Humidity</span
+                  ><span class="stat-value" id="lowHumidity">--%</span>
+               </div>
+               <div>
+                  <span class="stat-label">Pressure Trend</span
+                  ><span class="stat-value" id="pressureTrend">--</span>
+               </div>
+            </div>
+         </section>
 
-    <section class="history">
-      <div class="panel-header">
-        <h2>History</h2>
+         <section class="history">
+            <div class="panel-header">
+               <h2>History</h2>
 
-        <div class="range-buttons">
-          <button id="range24h" class="active">24h</button>
-          <button id="range7d">7d</button>
-        </div>
-      </div>
+               <div class="range-buttons">
+                  <button id="range24h" class="active">24h</button>
+                  <button id="range7d">7d</button>
+               </div>
+            </div>
 
-      <div class="graph-card">
-        <h3>Temperature</h3>
-        <div class="graph-container">
-          <canvas id="temperatureChart"></canvas>
-        </div>
-      </div>
+            <div class="graph-card">
+               <h3>Temperature</h3>
+               <div class="graph-container">
+                  <canvas id="temperatureChart"></canvas>
+               </div>
+            </div>
 
-      <div class="graph-card">
-        <h3>Humidity</h3>
-        <div class="graph-container">
-          <canvas id="humidityChart"></canvas>
-        </div>
-      </div>
+            <div class="graph-card">
+               <h3>Humidity</h3>
+               <div class="graph-container">
+                  <canvas id="humidityChart"></canvas>
+               </div>
+            </div>
 
-      <div class="graph-card">
-        <h3>Pressure</h3>
-        <div class="graph-container">
-          <canvas id="pressureChart"></canvas>
-        </div>
-      </div>
-    </section>
-  </main>
+            <div class="graph-card">
+               <h3>Pressure</h3>
+               <div class="graph-container">
+                  <canvas id="pressureChart"></canvas>
+               </div>
+            </div>
+         </section>
+      </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="app.js"></script>
-</body>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="app.js"></script>
+   </body>
 </html>
