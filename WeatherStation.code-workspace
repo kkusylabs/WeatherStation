@@ -1,0 +1,16 @@
+{
+  "folders": [
+	{
+		"name": "Firmware",
+		"path": "Firmware"
+	},
+	{
+		"name": "Server",
+		"path": "Server"
+	},
+	{
+		"name": "Dashboard",
+		"path": "Dashboard"
+	}
+]
+}
