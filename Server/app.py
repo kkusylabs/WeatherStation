@@ -1,3 +1,16 @@
+"""
+Flask server for the weather station.
+
+Provides endpoints for receiving weather readings, serving dashboard data,
+returning historical readings, and exposing station configuration.
+
+Weather reading timestamps are stored and returned in UTC. The station's
+configured time zone is used only when calculations depend on the station's
+local calendar day, such as daily high and low statistics.
+
+The dashboard is served from the Dashboard directory.
+"""
+
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, jsonify, request
