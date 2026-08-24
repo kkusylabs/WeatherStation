@@ -1,3 +1,5 @@
+"""Database access functions for weather station readings."""
+
 import sqlite3
 from pathlib import Path
 
