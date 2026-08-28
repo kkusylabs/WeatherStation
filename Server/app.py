@@ -19,7 +19,7 @@ WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "development-key")
 
 station_tz = ZoneInfo(STATION_TIMEZONE)
 
-app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
+app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
 
 database.init_database()
