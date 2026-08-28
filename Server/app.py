@@ -22,6 +22,8 @@ station_tz = ZoneInfo(STATION_TIMEZONE)
 app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for static files
 
+database.init_database()
+
 
 @app.get("/")
 def index():
@@ -231,5 +233,4 @@ def reading_to_json(row):
 
 
 if __name__ == "__main__":
-    database.init_database()
     app.run(host="0.0.0.0", port=5000, debug=True)
