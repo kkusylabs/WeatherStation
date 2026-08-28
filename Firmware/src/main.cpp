@@ -259,10 +259,18 @@ void sendToServer()
     return;
   }
 
+#if USE_LOCAL_SERVER
+  WiFiClient client;
+#else
+  WiFiClientSecure client;
+  client.setInsecure();
+#endif
+
   HTTPClient http;
 
-  http.begin(SERVER_URL);
+  http.begin(client, SERVER_URL);
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-API-Key", API_KEY);
   http.setTimeout(5000);
 
   char json[128];

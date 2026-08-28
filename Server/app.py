@@ -15,6 +15,8 @@ STATION_NAME = os.getenv("STATION_NAME", "Weather Station")
 
 STATION_TIMEZONE = os.getenv("STATION_TIMEZONE", "America/Chicago")
 
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "development-key")
+
 station_tz = ZoneInfo(STATION_TIMEZONE)
 
 app = Flask(__name__, static_folder="../Dashboard", static_url_path="")
@@ -34,6 +36,9 @@ def get_station():
 @app.post("/api/readings")
 def add_reading():
     """Validate and store a weather station reading."""
+
+    if request.headers.get("X-API-Key") != WEATHER_API_KEY:
+        return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
 

@@ -1,9 +1,10 @@
 """Database access functions for weather station readings."""
 
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("weather.db")
+DB_PATH = Path(os.getenv("WEATHER_DB_PATH", "weather.db"))
 
 
 def get_connection():
