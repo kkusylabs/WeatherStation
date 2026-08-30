@@ -14,6 +14,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "secrets.h"
+#include "certificates.h"
 
 /**
  * Display a short message on the OLED.
@@ -21,6 +22,20 @@
  * @param message Text to display.
  */
 void showMessage(const char *message);
+
+/**
+ * Synchronize the ESP32 system clock using NTP.
+ *
+ * A valid system time is required to verify the validity period of the
+ * server's TLS certificate when making HTTPS requests. Weather readings
+ * are still timestamped by the server, not by the ESP32.
+ *
+ * Waits for a valid time to be received from an NTP server and returns
+ * false if synchronization does not complete within the configured timeout.
+ *
+ * @return true if the system clock was synchronized; otherwise false.
+ */
+bool syncTime();
 
 /**
  * Perform one complete weather update cycle.
@@ -75,12 +90,18 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(
     U8X8_PIN_NONE);
 
 const unsigned long READ_INTERVAL_MS = 5UL * 60UL * 1000UL; // 5 minutes
+
+const time_t MIN_VALID_EPOCH_TIME = 1000000000;
+const unsigned long TIME_SYNC_TIMEOUT_MS = 10000;
+const unsigned long TIME_SYNC_RETRY_MS = 500;
+
 unsigned long lastReadTime = 0;
 
 float temperatureF = 0;
 float humidity = 0;
 float pressureHPa = 0;
 
+bool timeOk = false;
 bool sensorOk = false;
 bool wifiOk = false;
 bool serverOk = false;
@@ -127,6 +148,37 @@ void showMessage(const char *message)
   oled.setFont(u8g2_font_6x12_tf);
   oled.drawStr(0, 12, message);
   oled.sendBuffer();
+}
+
+bool syncTime()
+{
+  configTime(
+      0,
+      0,
+      "pool.ntp.org",
+      "time.nist.gov");
+
+  Serial.print("Synchronizing time");
+
+  unsigned long startTime = millis();
+
+  while (time(nullptr) < MIN_VALID_EPOCH_TIME)
+  {
+    if (millis() - startTime >= TIME_SYNC_TIMEOUT_MS)
+    {
+      Serial.println();
+      Serial.println("Time synchronization failed");
+      return false;
+    }
+
+    delay(TIME_SYNC_RETRY_MS);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("Time synchronized");
+
+  return true;
 }
 
 void updateWeather()
@@ -262,13 +314,31 @@ void sendToServer()
 #if USE_LOCAL_SERVER
   WiFiClient client;
 #else
+  if (!timeOk)
+  {
+    timeOk = syncTime();
+
+    if (!timeOk)
+    {
+      serverOk = false;
+      Serial.println("Cannot upload: time not synchronized");
+      return;
+    }
+  }
+
   WiFiClientSecure client;
-  client.setInsecure();
+  client.setCACert(ROOT_CA);
 #endif
 
   HTTPClient http;
 
-  http.begin(client, SERVER_URL);
+  if (!http.begin(client, SERVER_URL))
+  {
+    serverOk = false;
+    Serial.println("Cannot upload: HTTP initialization failed");
+    return;
+  }
+
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-API-Key", API_KEY);
   http.setTimeout(5000);
