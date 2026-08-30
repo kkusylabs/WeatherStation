@@ -2,6 +2,8 @@
 
 A Wi-Fi connected weather station that measures local environmental conditions and displays current and historical data through a web dashboard.
 
+The project started as a fun summer project with my son. We completed most of the system together before summer ended and school activities took over, and I later added some finishing touches to improve its robustness and prepare it for long-term use.
+
 An ESP32 collects temperature, humidity, and atmospheric pressure readings from a BME280 sensor and periodically sends them to a Python Flask server. The server stores readings in SQLite and provides a REST API used by a browser-based dashboard.
 
 **Live Dashboard:** https://weatherstation-production-ada2.up.railway.app
