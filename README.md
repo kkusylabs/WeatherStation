@@ -8,10 +8,6 @@ An ESP32 collects temperature, humidity, and atmospheric pressure readings from 
 
 **Live Dashboard:** https://weatherstation-production-ada2.up.railway.app
 
-## Weather Station
-
-![ESP32 weather station](docs/weather-station.jpeg)
-
 ## Dashboard
 
 The web dashboard displays current conditions along with historical temperature, humidity, and pressure data.
@@ -66,8 +62,21 @@ The ESP32 is responsible for collecting sensor data and sending valid readings t
 - ESP32 development board
 - BME280 temperature, humidity, and pressure sensor
 - 128×64 SH1106 OLED display
-- Wi-Fi network
-- USB power supply and associated wiring
+- Breadboard and jumper wires
+- USB power supply
+
+![Weather station hardware](docs/weather-station.jpeg)
+
+### Wiring
+
+The BME280 sensor and SH1106 OLED display share the ESP32's I²C bus.
+
+| ESP32      | BME280 | SH1106 |
+| ---------- | ------ | ------ |
+| **3V3**    | VCC    | VCC    |
+| **GND**    | GND    | GND    |
+| **GPIO21** | SDA    | SDA    |
+| **GPIO22** | SCL    | SCL    |
 
 ## Software
 
